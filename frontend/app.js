@@ -111,6 +111,7 @@ function applyFilter() {
   const shown = new Set(visible().map((v) => v.id));
   for (const [id, m] of markers) m.overlay.setMap(shown.has(id) ? map : null);
   document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-selected", c.dataset.d === filter));
+  $("#district").value = filter;
   renderCards();
   const list = visible();
   fitTo(list);
@@ -121,9 +122,12 @@ function renderChips() {
   const counts = {};
   videos.forEach((v) => (counts[v.district] = (counts[v.district] || 0) + 1));
   const names = ["전체", ...Object.keys(counts).sort((a, b) => counts[b] - counts[a])];
+  const label = (d) => (d === "전체" ? `전체 ${videos.length}` : `${d} ${counts[d]}`);
   $("#chips").replaceChildren(...names.map((d) =>
-    h("button", { class: "chip", role: "tab", "data-d": d, "aria-selected": d === filter, onclick: () => { filter = d; applyFilter(); } },
-      d === "전체" ? `전체 ${videos.length}` : `${d} ${counts[d]}`)));
+    h("button", { class: "chip", role: "tab", "data-d": d, "aria-selected": d === filter, onclick: () => { filter = d; applyFilter(); } }, label(d))));
+  // 모바일용: 같은 필터를 기본 선택창으로
+  $("#district").replaceChildren(...names.map((d) => h("option", { value: d }, d === "전체" ? `전체 구 (${videos.length})` : label(d))));
+  $("#district").onchange = (e) => { filter = e.target.value; applyFilter(); };
 }
 
 function renderCards() {
@@ -148,7 +152,7 @@ async function loadVideos() {
     if (!res.ok) throw new Error(res.status);
     videos = await res.json();
   } catch (e) {
-    $("#detail").replaceChildren(h("p", { class: "muted" }, "영상 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요."));
+    $("#detail").replaceChildren(h("p", { class: "muted" }, "영상 정보를 불러오지 못했습니다. 잠시 후 다시 시도해 주시기 바랍니다."));
     return;
   }
   for (const v of map ? videos : []) {  // 지도가 막혀도 목록·통계·상세는 그대로 보여준다
@@ -161,6 +165,8 @@ async function loadVideos() {
   renderStats();
   renderChips();
   renderCards();
+  // 목록이 그려지며 페이지가 길어지므로, #contact 같은 링크로 들어왔으면 위치를 다시 맞춘다
+  if (location.hash) document.querySelector(location.hash)?.scrollIntoView();
   if (videos.length) {
     fitTo(videos);
     select(videos[0].id, { fly: false });
@@ -168,7 +174,7 @@ async function loadVideos() {
 }
 
 function mapError() {
-  $("#map").replaceChildren(h("p", { class: "map-error" }, "지도를 불러오지 못했어요. 카카오 개발자 콘솔에 이 사이트 도메인이 등록됐는지 확인해주세요."));
+  $("#map").replaceChildren(h("p", { class: "map-error" }, "지도를 불러오지 못했습니다. 잠시 후 다시 시도해 주시기 바랍니다."));
 }
 
 // SDK는 index.html에서 이 파일보다 먼저 로드된다 (도메인 미등록이면 kakao.maps가 없음)
@@ -204,10 +210,10 @@ $("#contact-form").addEventListener("submit", async (e) => {
     if (!res.ok) throw new Error(res.status);
     form.reset();
     status.className = "form-status ok";
-    status.textContent = "문의가 접수됐어요. 남겨주신 이메일로 답장 드릴게요!";
+    status.textContent = "상담 신청이 접수되었습니다. 남겨주신 이메일로 답장 드리겠습니다.";
   } catch {
     status.className = "form-status err";
-    status.textContent = "전송에 실패했어요. 입력값을 확인하고 다시 시도해주세요.";
+    status.textContent = "전송에 실패했습니다. 입력하신 내용을 확인한 뒤 다시 시도해 주시기 바랍니다.";
   } finally {
     btn.disabled = false;
   }

@@ -14,14 +14,14 @@ ROOT = Path(__file__).resolve().parent
 VIDEOS_PATH = ROOT / "data" / "videos.json"
 FRONTEND = ROOT.parent / "frontend"
 EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
-CATEGORIES = {"광고·협업", "임장 요청", "기타"}
+CATEGORIES = {"단지 추천", "정책·대출 상담", "매수 시기·시장 상황", "임장 요청", "광고·협업", "기타"}
 
 app = FastAPI(title="daedunam_apt")
 
 
 class Contact(BaseModel):
     email: str = Field(max_length=254)
-    category: str = "기타"
+    category: str = "단지 추천"
     message: str = Field(min_length=5, max_length=3000)
     website: str = ""  # honeypot: 사람은 비워둠, 봇은 채움
 
@@ -45,13 +45,13 @@ def send_email(c: Contact) -> None:
     """Resend로 문의 메일 발송. 답장 버튼을 누르면 문의자에게 바로 가도록 reply_to를 건다."""
     key, to = os.getenv("RESEND_API_KEY"), os.getenv("CONTACT_TO")
     if not key or not to:
-        raise HTTPException(503, "문의 메일 설정이 안 되어 있어요 (RESEND_API_KEY, CONTACT_TO)")
+        raise HTTPException(503, "문의 메일 설정이 되어 있지 않습니다 (RESEND_API_KEY, CONTACT_TO)")
     body = json.dumps({
         # ponytail: resend.dev 발신 주소는 Resend 가입 이메일로만 보낼 수 있음. 다른 주소로 받으려면 Resend에서 도메인 인증 후 CONTACT_FROM 설정.
-        "from": os.getenv("CONTACT_FROM", "대두남 문의 <onboarding@resend.dev>"),
+        "from": os.getenv("CONTACT_FROM", "대두남 상담 <onboarding@resend.dev>"),
         "to": [to],
         "reply_to": c.email,
-        "subject": f"[대두남 문의 · {c.category}] {c.email}",
+        "subject": f"[대두남 상담 · {c.category}] {c.email}",
         "text": f"유형: {c.category}\n회신: {c.email}\n\n{c.message.strip()}",
     }).encode()
     req = urllib.request.Request(
@@ -62,7 +62,7 @@ def send_email(c: Contact) -> None:
         urllib.request.urlopen(req, timeout=10).close()
     except urllib.error.URLError as e:
         print("resend 실패:", getattr(e, "code", ""), getattr(e, "reason", e))
-        raise HTTPException(502, "메일 발송에 실패했어요") from e
+        raise HTTPException(502, "메일 발송에 실패했습니다") from e
 
 
 @app.get("/api/videos")
