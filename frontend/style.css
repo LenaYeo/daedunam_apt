@@ -53,17 +53,23 @@ h1, h2, h3 { line-height: 1.25; letter-spacing: -0.02em; margin: 0; }
 .btn-primary { background: var(--accent); color: var(--accent-ink); }
 .btn-primary:hover { background: color-mix(in srgb, var(--accent) 88%, black); }
 .btn-primary:disabled { opacity: .6; cursor: wait; }
-.btn-ghost { border-color: var(--line); background: var(--surface); }
-.btn-ghost:hover { border-color: var(--ink-2); }
+.btn-outline { background: transparent; color: #fff; border-color: rgba(255,255,255,.35); }
+.btn-outline:hover { border-color: #fff; background: rgba(255,255,255,.08); }
 
 /* hero */
 .hero { background: var(--navy); color: #fff; padding: 80px 0 72px; }
 .hero .lede { color: #c6cbe0; }
-.hero .btn-ghost { background: transparent; color: #fff; border-color: rgba(255,255,255,.3); }
 .hero-inner { display: grid; grid-template-columns: 1.4fr 1fr; gap: 48px; align-items: center; }
 .hero h1 { font-size: clamp(32px, 5vw, 52px); font-weight: 800; }
 .cta { display: flex; gap: 12px; flex-wrap: wrap; margin-top: 32px; }
 .hero-side { display: grid; gap: 12px; }
+.channels { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 16px; }
+.channel { display: flex; align-items: center; gap: 10px; padding: 10px 16px 10px 12px; border-radius: 12px; background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.14); color: #fff; text-decoration: none; transition: background .15s, border-color .15s; }
+.channel:hover { background: rgba(255,255,255,.12); border-color: rgba(255,255,255,.3); }
+.channel svg { width: 24px; height: 24px; fill: currentColor; flex: none; }
+.channel span { display: grid; line-height: 1.25; }
+.channel strong { font-size: 14px; }
+.channel small { font-size: 12px; color: #aeb4cc; }
 .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin: 8px 0 0; }
 .stats div { padding: 16px; border-radius: var(--radius); background: rgba(255,255,255,.06); border: 1px solid rgba(255,255,255,.1); }
 .stats dt { font-size: 13px; color: #aeb4cc; }
@@ -109,7 +115,8 @@ h1, h2, h3 { line-height: 1.25; letter-spacing: -0.02em; margin: 0; }
 .pin { cursor: pointer; font-family: inherit; display: grid; place-items: center; min-width: 34px; height: 34px; padding: 0 8px; border-radius: 999px; background: var(--navy); color: #fff; font-size: 12px; font-weight: 800; border: 2px solid #fff; box-shadow: 0 4px 12px rgba(0,0,0,.25); transition: transform .15s; }
 .pin.active { background: var(--accent); transform: scale(1.18); }
 
-.map-error { display: grid; place-items: center; height: 100%; margin: 0; padding: 24px; text-align: center; color: var(--muted); }
+#map:has(.map-error) { display: grid; place-items: center; }
+.map-error { margin: 0; padding: 24px; text-align: center; color: var(--muted); }
 
 /* episode cards */
 .cards { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 20px; }
@@ -122,9 +129,12 @@ h1, h2, h3 { line-height: 1.25; letter-spacing: -0.02em; margin: 0; }
 
 /* contact */
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
-.contact-links { list-style: none; padding: 0; margin: 24px 0 0; display: grid; gap: 8px; }
-.contact-links a { color: var(--ink-2); text-decoration: none; }
-.contact-links a:hover { color: var(--accent); }
+.intro { margin-top: 20px; }
+.intro-title { margin: 0 0 12px; font-size: 18px; font-weight: 700; }
+.intro ol { margin: 0 0 16px; padding: 0; list-style: none; counter-reset: n; display: grid; gap: 10px; }
+.intro li { counter-increment: n; display: flex; align-items: center; gap: 12px; color: var(--ink-2); }
+.intro li::before { content: counter(n); flex: none; display: grid; place-items: center; width: 28px; height: 28px; border-radius: 8px; background: color-mix(in srgb, var(--accent) 12%, transparent); color: var(--accent); font-weight: 800; font-size: 14px; }
+.intro .muted { margin: 0; font-size: 14px; }
 .form { display: grid; gap: 16px; background: var(--surface); border: 1px solid var(--line); border-radius: var(--radius); padding: 28px; box-shadow: var(--shadow); }
 .form label { display: grid; gap: 6px; font-size: 14px; font-weight: 600; }
 .form input, .form select, .form textarea { font: inherit; font-weight: 400; padding: 12px 14px; border-radius: 10px; border: 1px solid var(--line); background: var(--bg); color: var(--ink); }
@@ -176,6 +186,9 @@ h1, h2, h3 { line-height: 1.25; letter-spacing: -0.02em; margin: 0; }
   .hero .lede br { display: none; }
   .cta { margin-top: 24px; }
   .cta .btn { flex: 1; }
+  .channels { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+  .channel { flex-direction: column; text-align: center; gap: 6px; padding: 12px 6px; }
+  .channel small { font-size: 11px; word-break: break-all; }
   .hero-inner { gap: 24px; }
   .stats div { padding: 12px; }
   .stats dd { font-size: 22px; }

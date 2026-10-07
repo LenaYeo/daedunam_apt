@@ -26,7 +26,7 @@ const markers = new Map(); // id -> { overlay, el }
 const latLng = (v) => new kakao.maps.LatLng(v.lat, v.lng);
 
 function fitTo(list) {
-  if (!list.length) return;
+  if (!map || !list.length) return;
   const b = new kakao.maps.LatLngBounds();
   list.forEach((v) => b.extend(latLng(v)));
   map.setBounds(b, 60, 60, 60, 60);
@@ -93,9 +93,9 @@ function select(id, { fly = true } = {}) {
   }
   activeId = id;
   const cur = markers.get(id);
-  cur.el.classList.add("active");
-  cur.overlay.setZIndex(10);
-  if (fly) {
+  cur?.el.classList.add("active");
+  cur?.overlay.setZIndex(10);
+  if (fly && map) {
     if (map.getLevel() > 5) map.setLevel(5);
     map.panTo(latLng(v));
   }
@@ -151,7 +151,7 @@ async function loadVideos() {
     $("#detail").replaceChildren(h("p", { class: "muted" }, "영상 정보를 불러오지 못했어요. 잠시 후 다시 시도해주세요."));
     return;
   }
-  for (const v of videos) {
+  for (const v of map ? videos : []) {  // 지도가 막혀도 목록·통계·상세는 그대로 보여준다
     const el = h("button", { class: "pin", title: `${epLabel(v)} · ${v.area}`, "aria-label": `${epLabel(v)} ${v.area}`, onclick: () => select(v.id) },
       String(v.episode ?? "•"));
     const overlay = new kakao.maps.CustomOverlay({ position: latLng(v), content: el, clickable: true, zIndex: 1 });
@@ -177,10 +177,10 @@ if (window.kakao?.maps?.Map) {
   // 모바일은 핀치 줌이 있으니 확대 버튼은 데스크톱에서만
   if (matchMedia("(min-width: 961px)").matches) map.addControl(new kakao.maps.ZoomControl(), kakao.maps.ControlPosition.RIGHT);
   addEventListener("resize", () => map.relayout()); // 화면 회전 시 타일 깨짐 방지
-  loadVideos();
 } else {
   mapError();
 }
+loadVideos();
 
 // ---- contact ----
 $("#contact-form").addEventListener("submit", async (e) => {
