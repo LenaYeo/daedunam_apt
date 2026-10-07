@@ -16,7 +16,7 @@ def test_videos_have_map_fields():
 def test_contact(monkeypatch):
     sent = []
     monkeypatch.setattr(server, "send_email", sent.append)
-    ok = {"email": "a@b.co", "category": "기타", "message": "임장 요청합니다"}
+    ok = {"email": "a@b.co", "category": "단지 추천", "message": "예산 12억, 여의도 출퇴근"}
     assert client.post("/api/contact", json=ok).status_code == 201
     assert client.post("/api/contact", json={**ok, "email": "nope"}).status_code == 422
     assert client.post("/api/contact", json={**ok, "category": "해킹"}).status_code == 422
