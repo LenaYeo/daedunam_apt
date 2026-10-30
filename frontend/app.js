@@ -188,16 +188,128 @@ if (window.kakao?.maps?.Map) {
 }
 loadVideos();
 
-// ---- contact ----
-$("#contact-form").addEventListener("submit", async (e) => {
+// ---- contact: 단계형 설문 ----
+{
+// 문항은 여기서만 고치면 된다. name이 없는 문항은 라벨이 그대로 answers의 키(= 시트 컬럼명)가 된다.
+// grp이 같은 문항은 그중 1개 이상 입력해야 제출된다. req가 없는 문항은 비워도 된다(공개하고 싶지 않은 항목은 건너뛸 수 있게). when: "항목=값|값" — 해당 답일 때만 노출·필수 검사.
+const STEPS = [
+  { title: "신청 정보", fields: [
+    { l: "상담 유형", name: "category", t: "select", o: ["단지 추천", "정책·대출 상담", "매수 시기·시장 상황", "임장 요청", "기타"], req: 1 },
+    { l: "이메일", name: "email", t: "email", ph: "you@example.com", req: 1, ac: "email" },
+  ] },
+  { title: "인적 사항", fields: [
+    { l: "남자 나이 (만)", t: "number", ph: "만 나이" },
+    { l: "여자 나이 (만)", t: "number", ph: "만 나이" },
+    { l: "거주 지역", ph: "역 이름 / 단지명  예) 답십리역, 답십리파크자이" },
+    { l: "거주 형태", t: "select", o: ["월세", "전세", "매매"] },
+    { l: "계약 만료일", ph: "예) 2027.02", when: "거주 형태=월세|전세" },
+    { l: "가구원 수", t: "number", ph: "예) 3" },
+    { l: "자녀 유무", t: "select", o: ["무", "유"] },
+    { l: "자녀 성별·나이", ph: "예) 남아 3세", when: "자녀 유무=유" },
+    { l: "맞벌이 유무", t: "select", o: ["맞벌이", "외벌이"] },
+    { l: "향후 결혼/출산 계획", ph: "예) 2년 내 출산 계획" },
+  ] },
+  { title: "소득 및 자산", fields: [
+    { l: "월 소득 (합산 세후)", ph: "예) 800만원" },
+    { l: "저축 가능액 (주담대 포함)", ph: "예) 400만원" },
+    { l: "가용현금 (대출 포함, 합산)", ph: "부대비용 제외  예) 12~13억" },
+  ] },
+  { title: "주택 매수 조건", fields: [
+    { l: "남편 직장 지역", ph: "예) 여의도" },
+    { l: "아내 직장 지역", ph: "예) 합정" },
+    { l: "희망지역(단지) 1순위", ph: "지하철역 / 단지명  예) 구로구 구로현대" },
+    { l: "희망지역(단지) 2순위", ph: "예) 신도림역 태영데시앙" },
+    { l: "희망지역(단지) 3순위", ph: "있다면 기재" },
+    { l: "희망 평형", ph: "예) 59 선호, 입지 좋다면 49 가능 (49/59/84)" },
+    { l: "상담 내용", name: "message", t: "textarea", ph: "예) 지금 매수해도 될지, 받을 수 있는 대출이 있는지 궁금합니다." },
+  ] },
+  { title: "구독 확인", fields: [
+    { l: "네이버 이웃추가 ID", ph: "세 곳 중 1개 이상 입력해 주세요", grp: "sub" },
+    { l: "Threads 계정 ID", ph: "세 곳 중 1개 이상 입력해 주세요", grp: "sub" },
+    { l: "Youtube 계정 ID", ph: "세 곳 중 1개 이상 입력해 주세요", grp: "sub" },
+  ] },
+];
+
+const form = $("#contact-form");
+const status = $("#form-status");
+let step = 0;
+
+const fieldHTML = (f) => {
+  const n = f.name || f.l;
+  const attrs = `name="${n}"${f.req ? " required" : ""}${f.ph ? ` placeholder="${f.ph}"` : ""}${f.ac ? ` autocomplete="${f.ac}"` : ' autocomplete="off"'} maxlength="${f.t === "textarea" ? 3000 : 254}"`;
+  const input = f.t === "select" ? `<select name="${n}"${f.req ? " required" : ""}>${f.req ? "" : '<option value="">선택 안 함</option>'}${f.o.map((o) => `<option>${o}</option>`).join("")}</select>`
+    : f.t === "textarea" ? `<textarea ${attrs}></textarea>`
+    : `<input type="${f.t || "text"}" ${f.t === "number" ? 'inputmode="numeric" min="0" max="999" ' : ""}${attrs}>`;
+  return `<label>${f.l}${f.req ? ' <span class="opt">필수</span>' : ""}${input}</label>`;
+};
+// 화면(page) 하나에 문항 하나. 같은 grp의 문항은 한 화면에 같이 뜬다.
+// when이 있는 문항은 조건에 맞을 때만 거치고, 아니면 건너뛴다.
+const FIELDS = STEPS.flatMap((s) => s.fields.map((f) => ({ ...f, sec: s.title })));
+const PAGES = FIELDS.reduce((acc, f) => {
+  const last = acc[acc.length - 1];
+  if (f.grp && last && last[0].grp === f.grp) last.push(f);
+  else acc.push([f]);
+  return acc;
+}, []);
+$("#steps").innerHTML = PAGES.map((p) => `<fieldset class="step" hidden>${p.map(fieldHTML).join("")}</fieldset>`).join("");
+const panels = [...document.querySelectorAll(".step")];
+const ctls = (i) => [...panels[i].querySelectorAll("input,select,textarea")];
+
+const on = (p) => {
+  if (!p[0].when) return true;
+  const [k, v] = p[0].when.split("=");
+  return v.split("|").includes(form.elements[k].value);
+};
+// 건너뛴 문항은 disabled 처리해 검증과 전송에서 빠지게 한다
+const syncWhen = () => PAGES.forEach((p, i) => { if (p[0].when) ctls(i).forEach((c) => (c.disabled = !on(p))); });
+form.addEventListener("change", syncWhen);
+
+const move = (i, d) => {
+  do i += d; while (PAGES[i] && !on(PAGES[i]));
+  return i;
+};
+const isLast = () => move(step, 1) >= PAGES.length;
+
+const refresh = () => {
+  const skip = !PAGES[step].some((f) => f.req) && ctls(step).every((c) => !c.value.trim());
+  $("#step-next").textContent = skip ? "건너뛰기" : "다음";
+};
+const show = (i, focus = true) => {
+  step = i;
+  panels.forEach((p, k) => (p.hidden = k !== i));
+  const total = PAGES.filter(on).length, pos = PAGES.slice(0, i + 1).filter(on).length;
+  $("#step-label").textContent = `${PAGES[i][0].sec} · ${pos} / ${total}`;
+  $("#progress").style.width = `${(pos / total) * 100}%`;
+  $("#step-prev").hidden = move(i, -1) < 0;
+  $("#step-next").hidden = isLast();
+  $("#step-submit").hidden = !isLast();
+  refresh();
+  if (focus) ctls(i)[0].focus({ preventScroll: true });
+};
+const stepValid = () => ctls(step).every((c) => c.disabled || c.reportValidity());
+const next = () => stepValid() && show(move(step, 1));
+
+form.addEventListener("input", refresh);
+form.addEventListener("change", refresh);
+$("#step-prev").addEventListener("click", () => show(move(step, -1)));
+$("#step-next").addEventListener("click", next);
+syncWhen();
+show(0, false);
+
+form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  const form = e.target;
-  const status = $("#form-status");
-  if (!form.checkValidity()) {
-    form.reportValidity();
+  if (!isLast()) return next(); // 중간 단계에서 Enter를 눌러도 제출되지 않게
+  if (!stepValid()) return;
+  const sub = PAGES.findIndex((p) => p[0].grp === "sub");
+  if (ctls(sub).every((c) => !c.value.trim())) { // 구독 확인용 ID가 하나도 없으면 ID 화면으로 돌려보낸다
+    show(sub);
+    status.className = "form-status err";
+    status.textContent = "구독 확인을 위해 네이버·Threads·Youtube 중 1개 이상의 ID를 입력해 주세요.";
     return;
   }
-  const btn = form.querySelector("button");
+  status.textContent = "";
+  const { category, email, message, website, ...answers } = Object.fromEntries(new FormData(form));
+  const btn = $("#step-submit");
   btn.disabled = true;
   status.className = "form-status";
   status.textContent = "보내는 중…";
@@ -205,12 +317,14 @@ $("#contact-form").addEventListener("submit", async (e) => {
     const res = await fetch("/api/contact", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify(Object.fromEntries(new FormData(form))),
+      body: JSON.stringify({ category, email, message, website, answers }),
     });
     if (!res.ok) throw new Error(res.status);
     form.reset();
+    syncWhen();
+    show(0, false);
     status.className = "form-status ok";
-    status.textContent = "상담 신청이 접수되었습니다. 남겨주신 이메일로 답장 드리겠습니다.";
+    status.textContent = "상담 신청이 접수되었습니다. 구독 확인 후 남겨주신 이메일로 답장 드리겠습니다.";
   } catch {
     status.className = "form-status err";
     status.textContent = "전송에 실패했습니다. 입력하신 내용을 확인한 뒤 다시 시도해 주시기 바랍니다.";
@@ -218,3 +332,4 @@ $("#contact-form").addEventListener("submit", async (e) => {
     btn.disabled = false;
   }
 });
+}

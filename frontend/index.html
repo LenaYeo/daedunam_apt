@@ -116,28 +116,20 @@
             <li>서울 아파트 매매 추천 해드립니다.</li>
             <li>왕초보에게 리얼 꿀팁 전수해드립니다.</li>
           </ol>
-          <p class="muted">단지 추천부터 대출·청약 등 최신 정책과 시장 상황까지, 상황에 맞게 함께 고민해 드리겠습니다. 광고·협업 문의도 환영합니다.</p>
+          <p class="muted">단지 추천부터 대출·청약 등 최신 정책과 시장 상황까지, 상황에 맞게 함께 고민해 드리겠습니다.</p>
         </div>
       </div>
       <form id="contact-form" class="form" novalidate>
-        <label>상담 유형
-          <select name="category">
-            <option selected>단지 추천</option>
-            <option>정책·대출 상담</option>
-            <option>매수 시기·시장 상황</option>
-            <option>임장 요청</option>
-            <option>광고·협업</option>
-            <option>기타</option>
-          </select>
-        </label>
-        <label>이메일
-          <input type="email" name="email" placeholder="you@example.com" required maxlength="254" autocomplete="email">
-        </label>
-        <label>상담 내용
-          <textarea name="message" placeholder="예) 예산 12억, 직장 여의도, 아이 1명입니다. 마포·서대문 쪽을 보고 있는데 지금 매수해도 될지, 받을 수 있는 대출이 있는지 궁금합니다." required minlength="5" maxlength="3000"></textarea>
-        </label>
+        <p class="form-note">모든 걸 만족하는 값싼 아파트 추천은 어렵습니다. 금액대에 맞게 조건이 조정될 수 있습니다. 아래 내용을 작성해 주시면 구독 확인 후 내부 검토하여 회신드립니다. 이메일 외 항목은 공개를 원하지 않으시면 비워두셔도 됩니다.</p>
+        <p id="step-label" class="step-label"></p>
+        <div class="progress"><i id="progress"></i></div>
+        <div id="steps"></div>
         <input type="text" name="website" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true">
-        <button type="submit" class="btn btn-primary">상담 신청하기</button>
+        <div class="form-actions">
+          <button type="button" id="step-prev" class="btn btn-ghost">이전</button>
+          <button type="button" id="step-next" class="btn btn-primary">다음</button>
+          <button type="submit" id="step-submit" class="btn btn-primary">상담 신청하기</button>
+        </div>
         <p id="form-status" class="form-status" role="status"></p>
       </form>
     </div>
