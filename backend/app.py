@@ -25,7 +25,7 @@ class Contact(BaseModel):
     email: str = Field(max_length=254)
     category: str = "단지 추천"
     message: str = Field(default="", max_length=3000)
-    website: str = ""  # honeypot: 사람은 비워둠, 봇은 채움
+    trap: str = ""  # honeypot. website 같은 흔한 이름은 브라우저 자동완성이 채워버려 정상 신청이 버려진다: 사람은 비워둠, 봇은 채움
     answers: dict[str, str] = {}  # 설문 항목. 항목 이름 → 답변. 문항을 늘려도 서버는 그대로 둔다.
 
     @field_validator("email")
@@ -100,7 +100,7 @@ def videos():
 
 @app.post("/api/contact", status_code=201)
 def contact(c: Contact):
-    if not c.website:  # 봇이면 보내지 않고 성공한 척만 한다
+    if not c.trap:  # 봇이면 보내지 않고 성공한 척만 한다
         if os.getenv("SHEETS_WEBHOOK_URL"):
             save_to_sheet(c)  # 시트가 원본 기록이라 먼저 저장. 실패하면 메일도 보내지 않고 에러를 돌려준다.
         send_email(c)

@@ -308,7 +308,7 @@ form.addEventListener("submit", async (e) => {
     return;
   }
   status.textContent = "";
-  const { category, email, message, website, ...answers } = Object.fromEntries(new FormData(form));
+  const { category, email, message, trap, ...answers } = Object.fromEntries(new FormData(form));
   const btn = $("#step-submit");
   btn.disabled = true;
   status.className = "form-status";
@@ -317,7 +317,7 @@ form.addEventListener("submit", async (e) => {
     const res = await fetch("/api/contact", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, email, message, website, answers }),
+      body: JSON.stringify({ category, email, message, trap, answers }),
     });
     if (!res.ok) throw new Error(res.status);
     form.reset();

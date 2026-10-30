@@ -20,7 +20,7 @@ def test_contact(monkeypatch):
     assert client.post("/api/contact", json=ok).status_code == 201
     assert client.post("/api/contact", json={**ok, "email": "nope"}).status_code == 422
     assert client.post("/api/contact", json={**ok, "category": "해킹"}).status_code == 422
-    assert client.post("/api/contact", json={**ok, "website": "spam"}).status_code == 201  # 봇: 발송 안 됨
+    assert client.post("/api/contact", json={**ok, "trap": "spam"}).status_code == 201  # 봇: 발송 안 됨
     assert [c.email for c in sent] == ["a@b.co"]
 
 
