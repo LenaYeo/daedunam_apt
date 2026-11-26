@@ -112,7 +112,14 @@ def main() -> None:
         videos = [v for v in videos if v["id"] != f["id"]] + [entry]
         # ponytail: 좌표는 LLM 추정치. 핀이 어긋나면 videos.json에서 lat/lng만 손으로 고친다.
 
-    videos.sort(key=lambda v: v["published"], reverse=True)
+    videos.sort(key=lambda v: v["published"])
+    # episode이 null인 항목에 순서대로 번호 부여
+    max_ep = max((v["episode"] for v in videos if v["episode"]), default=0)
+    for v in videos:
+        if v["episode"] is None:
+            max_ep += 1
+            v["episode"] = max_ep
+    videos.reverse()
     VIDEOS_PATH.write_text(json.dumps(videos, ensure_ascii=False, indent=2) + "\n", encoding="utf-8")
     print(f"저장 완료: {len(videos)}개")
 
