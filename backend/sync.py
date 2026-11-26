@@ -29,7 +29,7 @@ SYSTEM = """너는 서울 아파트 임장 유튜브 채널 '대두남'의 에�
 - points는 실거주 관점에서 이 지역의 핵심을 한 문장씩.
 - complexes.note는 '2019년 · 1,900세대 · 84㎡ 22억'처럼 짧게. 가격이 없으면 생략."""
 
-GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent"
 
 
 class Complex(BaseModel):
