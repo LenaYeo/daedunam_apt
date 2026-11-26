@@ -1,4 +1,4 @@
-"""유튜브 RSS에서 새 영상을 가져와 Claude로 요약/위치 추출 후 data/videos.json에 추가.
+"""유튜브 RSS에서 새 영상을 가져와 Gemini로 요약/위치 추출 후 data/videos.json에 추가.
 
     python sync.py            # 새 영상만 요약
     python sync.py --redo ID  # 특정 영상 다시 요약
@@ -7,13 +7,14 @@ RSS는 최신 15개만 준다. 그보다 오래된 영상은 videos.json에 직�
 """
 import argparse
 import json
+import os
 import re
 import sys
 import urllib.request
 import xml.etree.ElementTree as ET
 from pathlib import Path
 
-import anthropic
+import httpx
 from pydantic import BaseModel, Field
 
 CHANNEL_ID = "UCPa3SNWU0E4hT15FKoxfBow"  # @DaeDuNam
@@ -27,6 +28,8 @@ SYSTEM = """너는 서울 아파트 임장 유튜브 채널 '대두남'의 에�
 - lat/lng는 영상이 다루는 단지들의 중심 위치(서울 안)다.
 - points는 실거주 관점에서 이 지역의 핵심을 한 문장씩.
 - complexes.note는 '2019년 · 1,900세대 · 84㎡ 22억'처럼 짧게. 가격이 없으면 생략."""
+
+GEMINI_URL = "https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent"
 
 
 class Complex(BaseModel):
@@ -64,20 +67,21 @@ def episode_no(title: str) -> int | None:
     return int(m.group(1)) if m else None
 
 
-def summarize(client: anthropic.Anthropic, v: dict) -> Summary:
-    resp = client.beta.messages.parse(
-        model="claude-opus-5-5",
-        max_tokens=16000,
-        betas=["server-side-fallback-2026-07-01"],
-        fallbacks="default",  # 안전 필터가 거절하면 서버가 다른 모델로 재시도
-        output_config={"effort": "low"},  # 설명란 정리 수준이라 low로 충분
-        system=SYSTEM,
-        messages=[{"role": "user", "content": f"제목: {v['title']}\n\n설명란:\n{v['description']}"}],
-        output_format=Summary,
+def summarize(api_key: str, v: dict) -> Summary:
+    schema_hint = json.dumps(Summary.model_json_schema(), ensure_ascii=False)
+    resp = httpx.post(
+        GEMINI_URL,
+        params={"key": api_key},
+        json={
+            "systemInstruction": {"parts": [{"text": SYSTEM + "\n\n응답 JSON 스키마:\n" + schema_hint}]},
+            "contents": [{"parts": [{"text": f"제목: {v['title']}\n\n설명란:\n{v['description']}"}]}],
+            "generationConfig": {"responseMimeType": "application/json"},
+        },
+        timeout=30,
     )
-    if resp.stop_reason == "refusal" or resp.parsed_output is None:
-        raise RuntimeError(f"요약 실패 ({resp.stop_reason})")
-    return resp.parsed_output
+    resp.raise_for_status()
+    text = resp.json()["candidates"][0]["content"]["parts"][0]["text"]
+    return Summary.model_validate_json(text)
 
 
 def main() -> None:
@@ -92,12 +96,16 @@ def main() -> None:
         print("새 영상 없음")
         return
 
-    client = anthropic.Anthropic()
+    api_key = os.environ.get("GEMINI_API_KEY")
+    if not api_key:
+        print("GEMINI_API_KEY 환경변수를 설정해주세요", file=sys.stderr)
+        sys.exit(1)
+
     for f in todo:
         print("요약 중:", f["title"])
         try:
-            s = summarize(client, f)
-        except (anthropic.APIError, RuntimeError) as e:
+            s = summarize(api_key, f)
+        except (httpx.HTTPStatusError, KeyError, RuntimeError) as e:
             print("  건너뜀:", e, file=sys.stderr)
             continue
         entry = {"id": f["id"], "episode": episode_no(f["title"]), "title": f["title"], "published": f["published"], **s.model_dump()}
