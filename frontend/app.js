@@ -131,7 +131,7 @@ function renderChips() {
   $("#district").onchange = (e) => { filter = e.target.value; applyFilter(); };
 }
 
-const PER_PAGE = 9;
+const PER_PAGE = 8;
 let page = 0;
 
 function renderCards() {
