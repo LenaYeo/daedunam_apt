@@ -146,6 +146,10 @@ h1, h2, h3 { line-height: 1.25; letter-spacing: -0.02em; margin: 0; }
 .card-body h3 { font-size: 16px; margin: 6px 0 4px; }
 .card-body p { margin: 0; font-size: 14px; color: var(--muted); }
 
+.pagination { grid-column: 1 / -1; display: flex; justify-content: center; gap: 6px; padding: 12px 0 0; }
+.page-btn { width: 36px; height: 36px; border: 1px solid var(--line); border-radius: 8px; background: var(--surface); color: var(--ink-2); font: 600 14px/1 inherit; cursor: pointer; }
+.page-btn.active { background: var(--accent); color: var(--accent-ink); border-color: var(--accent); }
+
 /* contact */
 .contact-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 48px; }
 .intro { margin-top: 20px; }

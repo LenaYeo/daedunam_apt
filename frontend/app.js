@@ -112,6 +112,7 @@ function applyFilter() {
   for (const [id, m] of markers) m.overlay.setMap(shown.has(id) ? map : null);
   document.querySelectorAll(".chip").forEach((c) => c.setAttribute("aria-selected", c.dataset.d === filter));
   $("#district").value = filter;
+  page = 0;
   renderCards();
   const list = visible();
   fitTo(list);
@@ -130,14 +131,28 @@ function renderChips() {
   $("#district").onchange = (e) => { filter = e.target.value; applyFilter(); };
 }
 
+const PER_PAGE = 9;
+let page = 0;
+
 function renderCards() {
-  $("#cards").replaceChildren(...visible().map((v) =>
+  const list = visible();
+  const total = Math.ceil(list.length / PER_PAGE);
+  page = Math.min(page, Math.max(total - 1, 0));
+  const slice = list.slice(page * PER_PAGE, (page + 1) * PER_PAGE);
+
+  const cards = slice.map((v) =>
     h("button", { class: "card", onclick: () => { select(v.id); $("#map-section").scrollIntoView(); } },
       h("img", { src: thumb(v.id), alt: "", loading: "lazy" }),
       h("div", { class: "card-body" },
         h("div", { class: "badge" }, epLabel(v), h("span", {}, v.area)),
         h("h3", {}, v.headline),
-        h("p", {}, fmtDate(v.published))))));
+        h("p", {}, fmtDate(v.published)))));
+
+  const nav = total > 1 ? h("nav", { class: "pagination" },
+    ...Array.from({ length: total }, (_, i) =>
+      h("button", { class: `page-btn${i === page ? " active" : ""}`, onclick: () => { page = i; renderCards(); $("#episodes").scrollIntoView(); } }, String(i + 1)))) : null;
+
+  $("#cards").replaceChildren(...cards, ...(nav ? [nav] : []));
 }
 
 function renderStats() {
