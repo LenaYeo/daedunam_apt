@@ -98,12 +98,31 @@ def videos():
     return json.loads(VIDEOS_PATH.read_text(encoding="utf-8"))
 
 
+def send_telegram(c: Contact) -> None:
+    """Telegram Bot API로 상담 알림 전송. 환경변수 없으면 조용히 건너뛴다."""
+    token, chat = os.getenv("TELEGRAM_BOT_TOKEN"), os.getenv("TELEGRAM_CHAT_ID")
+    if not token or not chat:
+        return
+    text = f"📩 상담 신청\n유형: {c.category}\n회신: {c.email}\n\n{answers_text(c)}{c.message.strip()}"
+    body = json.dumps({"chat_id": chat, "text": text}).encode()
+    req = urllib.request.Request(
+        f"https://api.telegram.org/bot{token}/sendMessage", data=body, method="POST",
+        headers={"Content-Type": "application/json"},
+    )
+    try:
+        urllib.request.urlopen(req, timeout=10).close()
+    except urllib.error.URLError as e:
+        print("telegram 실패:", getattr(e, "code", ""), getattr(e, "reason", e))
+        # ponytail: 텔레그램 실패는 치명적이지 않으므로 에러를 삼킨다. 이메일/시트가 원본 기록.
+
+
 @app.post("/api/contact", status_code=201)
 def contact(c: Contact):
     if not c.trap:  # 봇이면 보내지 않고 성공한 척만 한다
         if os.getenv("SHEETS_WEBHOOK_URL"):
             save_to_sheet(c)  # 시트가 원본 기록이라 먼저 저장. 실패하면 메일도 보내지 않고 에러를 돌려준다.
         send_email(c)
+        send_telegram(c)
     return {"ok": True}
 
 

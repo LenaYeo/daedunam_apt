@@ -203,10 +203,8 @@ if (window.kakao?.maps?.Map) {
 }
 loadVideos();
 
-// ---- contact: 단계형 설문 ----
+// ---- contact: 무료 상담 (멀티스텝) ----
 {
-// 문항은 여기서만 고치면 된다. name이 없는 문항은 라벨이 그대로 answers의 키(= 시트 컬럼명)가 된다.
-// grp이 같은 문항은 그중 1개 이상 입력해야 제출된다. req가 없는 문항은 비워도 된다(공개하고 싶지 않은 항목은 건너뛸 수 있게). when: "항목=값|값" — 해당 답일 때만 노출·필수 검사.
 const STEPS = [
   { title: "신청 정보", fields: [
     { l: "상담 유형", name: "category", t: "select", o: ["단지 추천", "정책·대출 상담", "매수 시기·시장 상황", "임장 요청", "기타"], req: 1 },
@@ -245,8 +243,8 @@ const STEPS = [
   ] },
 ];
 
-const form = $("#contact-form");
-const status = $("#form-status");
+const form = $("#free-form");
+const status = $("#free-status");
 let step = 0;
 
 const fieldHTML = (f) => {
@@ -257,8 +255,6 @@ const fieldHTML = (f) => {
     : `<input type="${f.t || "text"}" ${f.t === "number" ? 'inputmode="numeric" min="0" max="999" ' : ""}${attrs}>`;
   return `<label>${f.l}${f.req ? ' <span class="opt">필수</span>' : ""}${input}</label>`;
 };
-// 화면(page) 하나에 문항 하나. 같은 grp의 문항은 한 화면에 같이 뜬다.
-// when이 있는 문항은 조건에 맞을 때만 거치고, 아니면 건너뛴다.
 const FIELDS = STEPS.flatMap((s) => s.fields.map((f) => ({ ...f, sec: s.title })));
 const PAGES = FIELDS.reduce((acc, f) => {
   const last = acc[acc.length - 1];
@@ -275,14 +271,10 @@ const on = (p) => {
   const [k, v] = p[0].when.split("=");
   return v.split("|").includes(form.elements[k].value);
 };
-// 건너뛴 문항은 disabled 처리해 검증과 전송에서 빠지게 한다
 const syncWhen = () => PAGES.forEach((p, i) => { if (p[0].when) ctls(i).forEach((c) => (c.disabled = !on(p))); });
 form.addEventListener("change", syncWhen);
 
-const move = (i, d) => {
-  do i += d; while (PAGES[i] && !on(PAGES[i]));
-  return i;
-};
+const move = (i, d) => { do i += d; while (PAGES[i] && !on(PAGES[i])); return i; };
 const isLast = () => move(step, 1) >= PAGES.length;
 
 const refresh = () => {
@@ -313,10 +305,10 @@ show(0, false);
 
 form.addEventListener("submit", async (e) => {
   e.preventDefault();
-  if (!isLast()) return next(); // 중간 단계에서 Enter를 눌러도 제출되지 않게
+  if (!isLast()) return next();
   if (!stepValid()) return;
   const sub = PAGES.findIndex((p) => p[0].grp === "sub");
-  if (ctls(sub).every((c) => !c.value.trim())) { // 구독 확인용 ID가 하나도 없으면 ID 화면으로 돌려보낸다
+  if (ctls(sub).every((c) => !c.value.trim())) {
     show(sub);
     status.className = "form-status err";
     status.textContent = "구독 확인을 위해 네이버·Threads·Youtube 중 1개 이상의 ID를 입력해 주세요.";
@@ -325,26 +317,93 @@ form.addEventListener("submit", async (e) => {
   status.textContent = "";
   const { category, email, message, trap, ...answers } = Object.fromEntries(new FormData(form));
   const btn = $("#step-submit");
-  btn.disabled = true;
-  status.className = "form-status";
-  status.textContent = "보내는 중…";
+  btn.disabled = true; status.className = "form-status"; status.textContent = "보내는 중…";
   try {
-    const res = await fetch("/api/contact", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ category, email, message, trap, answers }),
-    });
+    const res = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ category, email, message, trap, answers }) });
     if (!res.ok) throw new Error(res.status);
-    form.reset();
-    syncWhen();
-    show(0, false);
+    form.reset(); syncWhen(); show(0, false);
     status.className = "form-status ok";
     status.textContent = "상담 신청이 접수되었습니다. 구독 확인 후 남겨주신 이메일로 답장 드리겠습니다.";
   } catch {
     status.className = "form-status err";
     status.textContent = "전송에 실패했습니다. 입력하신 내용을 확인한 뒤 다시 시도해 주시기 바랍니다.";
-  } finally {
-    btn.disabled = false;
-  }
+  } finally { btn.disabled = false; }
 });
+}
+
+// ---- contact: 유료 상담 (티어 → 모달) ----
+{
+const TIERS = [
+  { id: "basic", name: "기본 상담", items: ["예산에 맞는 단지 추천", "텔레그램 커뮤니티 입장", "텔레그램 Q&A"],
+    extra: [{ l: "희망 금액대", ph: "예) 7~9억" }] },
+  { id: "recommend", name: "단지 추천", items: ["맞춤 매물 3개 추천", "텔레그램 커뮤니티 입장", "텔레그램 Q&A"],
+    extra: [{ l: "희망 지역 1순위", ph: "예) 구로구 구로현대", req: 1 }, { l: "희망 지역 2순위", ph: "예) 신도림역 태영데시앙" }, { l: "희망 평형", ph: "예) 59㎡ (49/59/84)" }] },
+  { id: "fullcare", name: "풀케어", badge: "추천", items: ["전담 2:1 채팅 상담", "맞춤 단지 추천", "텔레그램 커뮤니티 입장", "가계부 · 재무 설계"],
+    extra: [{ l: "월 소득 (합산 세후)", ph: "예) 800만원" }, { l: "자녀 유무", t: "select", o: ["무", "유"] }, { l: "상세 상담 내용", t: "textarea", ph: "원하시는 내용을 자세히 적어주세요" }] },
+];
+const COMMON = [
+  { l: "이메일", name: "email", t: "email", ph: "you@example.com", req: 1, ac: "email" },
+  { l: "성별", t: "select", o: ["남성", "여성"] },
+  { l: "거주 지역", ph: "예) 답십리역, 마포구" },
+];
+
+const fld = (f) => {
+  const n = f.name || f.l;
+  const rq = f.req ? " required" : "";
+  const ph = f.ph ? ` placeholder="${f.ph}"` : "";
+  const ac = f.ac ? ` autocomplete="${f.ac}"` : "";
+  const mx = f.t === "textarea" ? 3000 : 254;
+  if (f.t === "select") return `<label>${f.l}${f.req ? ' <span class="opt">필수</span>' : ""}<select name="${n}"${rq}>${f.req ? "" : '<option value="">선택 안 함</option>'}${f.o.map((o) => `<option>${o}</option>`).join("")}</select></label>`;
+  if (f.t === "textarea") return `<label>${f.l}<textarea name="${n}"${ph}${rq} maxlength="${mx}"></textarea></label>`;
+  return `<label>${f.l}${f.req ? ' <span class="opt">필수</span>' : ""}<input type="${f.t || "text"}" name="${n}"${ph}${rq}${ac} maxlength="${mx}"></label>`;
+};
+
+const formHTML = (tier) => `<form class="form paid-form" novalidate>
+  ${[...COMMON, ...tier.extra].map(fld).join("")}
+  <input type="text" name="trap" class="hp" tabindex="-1" autocomplete="off" aria-hidden="true" readonly>
+  <button type="submit" class="btn btn-primary">신청하기</button>
+  <p class="form-status" role="status"></p>
+</form>`;
+
+const tierHTML = (t) => `<div class="tier${t.badge ? " tier-pop" : ""}" data-tier="${t.id}">
+  ${t.badge ? `<span class="tier-badge">${t.badge}</span>` : ""}
+  <div class="tier-head"><span class="tier-name">${t.name}</span></div>
+  <ul class="tier-list">${t.items.map((i) => `<li>${i}</li>`).join("")}</ul>
+  <button class="btn-tier${t.badge ? " primary" : ""}">상담 신청</button>
+</div>`;
+
+const wrap = $("#tiers");
+wrap.innerHTML = TIERS.map(tierHTML).join("");
+wrap.querySelectorAll(".btn-tier").forEach((btn) => {
+  btn.addEventListener("click", () => {
+    const tier = TIERS.find((t) => t.id === btn.closest(".tier").dataset.tier);
+    $("#modal-title").textContent = tier.name + " 상담 신청";
+    $("#modal-body").innerHTML = formHTML(tier);
+    $("#paid-modal").hidden = false;
+    document.body.style.overflow = "hidden";
+    const form = $("#modal-body").querySelector("form");
+    form.addEventListener("submit", async (e) => {
+      e.preventDefault();
+      if (!form.reportValidity()) return;
+      const { email, trap, ...answers } = Object.fromEntries(new FormData(form));
+      answers["상담 티어"] = tier.name;
+      const btn = form.querySelector('[type="submit"]');
+      const st = form.querySelector(".form-status");
+      btn.disabled = true; st.className = "form-status"; st.textContent = "보내는 중…";
+      try {
+        const res = await fetch("/api/contact", { method: "POST", headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ email, trap, category: "기타", message: `[${tier.name}]`, answers }) });
+        if (!res.ok) throw new Error(res.status);
+        form.reset(); st.className = "form-status ok"; st.textContent = "상담 신청이 접수되었습니다.";
+      } catch { st.className = "form-status err"; st.textContent = "전송에 실패했습니다. 다시 시도해 주세요.";
+      } finally { btn.disabled = false; }
+    });
+    form.elements[0].focus({ preventScroll: true });
+  });
+});
+
+const closeModal = () => { $("#paid-modal").hidden = true; document.body.style.overflow = ""; $("#modal-body").innerHTML = ""; };
+$("#modal-close").addEventListener("click", closeModal);
+$("#paid-modal").addEventListener("click", (e) => { if (e.target === e.currentTarget) closeModal(); });
 }
